@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
-const BottomNav = ({ activeRoute, onNavigate }) => {
+const BottomNav = ({ activeRoute, onNavigate, currentUrl }) => {
 
   const navItems = [
     {
@@ -42,6 +42,12 @@ const BottomNav = ({ activeRoute, onNavigate }) => {
       onNavigate?.(item.route, item.id);
     }
   };
+
+  const cantDisplay = currentUrl.includes("login")
+
+  if (cantDisplay) {
+    return
+  }
 
   return (
     <View style={styles.container}>

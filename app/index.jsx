@@ -17,7 +17,7 @@ import GoBackHeaderNav from "./components/GoBackHeaderNav";
 import PullToRefresh from "./components/PullToRefresh";
 
 export default function Index() {
-  const KIWI_URL = "https://v2.startkiwi.com/dashboard";
+  const KIWI_URL = "https://demo.startkiwi.com/dashboard";
 
   const webviewRef = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -30,10 +30,6 @@ export default function Index() {
 
   const lastUrlRef = useRef(KIWI_URL);
   const isManualBackRef = useRef(false);
-
-  useEffect(() => {
-    console.log("HISTORY STACK:", historyStack);
-  }, [historyStack]);
 
   // Update history stack whenever currentUrl changes
   useEffect(() => {
@@ -161,7 +157,6 @@ export default function Index() {
     }
   };
 
-  // Scroll detection JS for WebView
   const scrollDetector = `
     let isScrolling;
     window.addEventListener('scroll', function() {
@@ -186,7 +181,19 @@ export default function Index() {
       type: 'scroll', 
       scrollY: window.scrollY 
     }));
-    true;
+  `;
+
+  const preventZoom = `
+    const meta = document.createElement('meta');
+    meta.setAttribute('name', 'viewport');
+    meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    document.getElementsByTagName('head')[0].appendChild(meta);
+  `;
+
+  const combinedScript = `
+    ${scrollDetector}
+    ${preventZoom}
+    true
   `;
 
   return (
@@ -217,15 +224,16 @@ export default function Index() {
               domStorageEnabled
               startInLoadingState
               onLoadEnd={() => setLoading(false)}
-              injectedJavaScript={scrollDetector}
+              injectedJavaScript={combinedScript}
               onNavigationStateChange={onNavigationStateChange}
-              onMessage={handleWebViewMessage} // Use the new handler
+              onMessage={handleWebViewMessage}
             />
           </PullToRefresh>
         </View>
         <BottomNav
           activeRoute={activeRoute}
           onNavigate={handleBottomNavPress}
+          currentUrl={currentUrl}
         />
         <View style={{ height: insets.bottom, backgroundColor: "#FFFFFF" }} />
         {loading && (

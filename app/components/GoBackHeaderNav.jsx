@@ -14,7 +14,9 @@ function GoBackHeaderNav({ insets, canGoBack, goBack, currentUrl }) {
     goBack();
   };
 
-  if (!canGoBack || currentUrl.includes("messages")) {
+  const cantGoBack = !canGoBack || currentUrl.includes("messages") || currentUrl.includes("login")
+
+  if (cantGoBack) {
     return (
       <View
         style={{ height: insets.top, backgroundColor: "rgba(41, 172, 238, 1)" }}
