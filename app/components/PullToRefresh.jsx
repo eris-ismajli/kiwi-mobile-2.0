@@ -1,18 +1,30 @@
 import React, { useRef, useState } from "react";
 import { ScrollView, RefreshControl, StyleSheet, Platform } from "react-native";
 
-export default function PullToRefresh({ children, onRefresh, isAtTop = true, currentUrl = "" }) {
+export default function PullToRefresh({
+  children,
+  onRefresh,
+  isAtTop = true,
+  currentUrl = "",
+}) {
   const scrollRef = useRef(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const viewingCourse = currentUrl.includes("course/") || currentUrl.includes("scorm");
+  const viewingCourse =
+    currentUrl.includes("course/") || currentUrl.includes("scorm");
 
   const handleRefresh = async () => {
     if (!isAtTop || viewingCourse) return;
 
     setRefreshing(true);
     try {
-      await onRefresh?.();
+      // Optional: Add a minimum delay to ensure spinner is visible
+      const [refreshResult] = await Promise.all([
+        Promise.resolve(onRefresh?.()),
+        new Promise((resolve) => setTimeout(resolve, 1000)), // Minimum 1 second
+      ]);
+    } catch (error) {
+      console.error("Refresh failed:", error);
     } finally {
       setRefreshing(false);
     }
@@ -31,6 +43,8 @@ export default function PullToRefresh({ children, onRefresh, isAtTop = true, cur
             refreshing={refreshing}
             onRefresh={handleRefresh}
             enabled={isAtTop}
+            tintColor="#34a0daff" // Blue-ish color
+            colors={["#34a0daff"]} // For Android
           />
         ) : undefined
       }

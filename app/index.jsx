@@ -15,6 +15,9 @@ import {
 import BottomNav from "./components/BottomNav";
 import GoBackHeaderNav from "./components/GoBackHeaderNav";
 import PullToRefresh from "./components/PullToRefresh";
+import OfflineOverlay from "./components/NetworkIndicator";
+
+import * as customScripts from "./CustomScripts/InjectedScripts"
 
 export default function Index() {
   const KIWI_URL = "https://demo.startkiwi.com/dashboard";
@@ -25,17 +28,15 @@ export default function Index() {
   const [currentUrl, setCurrentUrl] = useState(KIWI_URL);
   const [historyStack, setHistoryStack] = useState([KIWI_URL]);
   const [canGoBack, setCanGoBack] = useState(false);
-  const [isAtTop, setIsAtTop] = useState(true); // Add this state
+  const [isAtTop, setIsAtTop] = useState(true);
   const insets = useSafeAreaInsets();
 
   const lastUrlRef = useRef(KIWI_URL);
   const isManualBackRef = useRef(false);
 
-  // Update history stack whenever currentUrl changes
   useEffect(() => {
     if (lastUrlRef.current === currentUrl) return;
 
-    // Don't update history stack if this is a manual back navigation
     if (isManualBackRef.current) {
       isManualBackRef.current = false;
       lastUrlRef.current = currentUrl;
@@ -51,7 +52,6 @@ export default function Index() {
     lastUrlRef.current = currentUrl;
   }, [currentUrl]);
 
-  // Android navigation bar styling
   useEffect(() => {
     if (Platform.OS === "android") {
       const setNavBar = async () => {
@@ -62,43 +62,23 @@ export default function Index() {
     }
   }, []);
 
-  // Pull-to-refresh handler
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     webviewRef.current?.reload();
   };
 
-  // Bottom navigation handler
   const handleBottomNavPress = (route, routeId) => {
     setActiveRoute(routeId);
 
-    // Use SPA-friendly navigation via pushState
-    const smoothNavigation = `
-      (function() {
-        if (window.history && window.history.pushState) {
-          window.history.pushState({}, '', '${route}');
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        }
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'urlChange',
-          url: window.location.href
-        }));
-      })();
-      true;
-    `;
-
-    webviewRef.current?.injectJavaScript(smoothNavigation);
+    webviewRef.current?.injectJavaScript(customScripts.smoothNavigation(route));
   };
 
-  // WebView navigation state updates
   const onNavigationStateChange = (navState) => {
     const url = navState.url;
 
-    // Only update if URL changed
     if (lastUrlRef.current !== url) {
       setCurrentUrl(url);
     }
 
-    // Determine active route
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.includes("/learning-plan")) setActiveRoute("learning-plan");
     else if (lowerUrl.includes("/library")) setActiveRoute("library");
@@ -117,39 +97,21 @@ export default function Index() {
     const newStack = historyStack.slice(0, -1);
     const previousUrl = newStack[newStack.length - 1];
 
-    // Set the flag to prevent history stack update
     isManualBackRef.current = true;
 
-    // Don't setCurrentUrl here - let the WebView message update it
     setHistoryStack(newStack);
     setCanGoBack(newStack.length > 1);
 
-    // Use pushState instead of history.back() to prevent refresh
-    webviewRef.current?.injectJavaScript(`
-      (function() {
-        if (window.history && window.history.pushState) {
-          window.history.pushState({}, '', '${previousUrl}');
-          window.dispatchEvent(new PopStateEvent('popstate'));
-          
-          // Post message to update React state
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'urlChange',
-            url: '${previousUrl}'
-          }));
-        }
-      })();
-      true;
-    `);
+  
+    webviewRef.current?.injectJavaScript(customScripts.preventRefreshOnBack(previousUrl));
   };
 
-  // Handle scroll messages from WebView
   const handleWebViewMessage = (event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === "urlChange") {
         setCurrentUrl(data.url);
       } else if (data.type === "scroll") {
-        // Update isAtTop based on actual scroll position
         setIsAtTop(data.scrollY === 0);
       }
     } catch (error) {
@@ -157,48 +119,16 @@ export default function Index() {
     }
   };
 
-  const scrollDetector = `
-    let isScrolling;
-    window.addEventListener('scroll', function() {
-      window.clearTimeout(isScrolling);
-      isScrolling = setTimeout(function() {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'scroll',
-          scrollY: window.scrollY
-        }));
-      }, 50);
-    }, false);
-
-    window.addEventListener('popstate', function() {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'popstate',
-        url: window.location.href
-      }));
-    });
-
-    // Initial scroll position
-    window.ReactNativeWebView.postMessage(JSON.stringify({ 
-      type: 'scroll', 
-      scrollY: window.scrollY 
-    }));
-  `;
-
-  const preventZoom = `
-    const meta = document.createElement('meta');
-    meta.setAttribute('name', 'viewport');
-    meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-    document.getElementsByTagName('head')[0].appendChild(meta);
-  `;
-
   const combinedScript = `
-    ${scrollDetector}
-    ${preventZoom}
+    ${customScripts.scrollDetector}
+    ${customScripts.preventZoom}
     true
   `;
 
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1 }}>
+        <OfflineOverlay />
         <StatusBar
           barStyle="light-content"
           translucent={false}
@@ -213,7 +143,7 @@ export default function Index() {
         <View style={{ flex: 1 }}>
           <PullToRefresh
             onRefresh={handleRefresh}
-            isAtTop={isAtTop} // Use actual scroll position
+            isAtTop={isAtTop}
             currentUrl={currentUrl}
           >
             <WebView
@@ -227,6 +157,7 @@ export default function Index() {
               injectedJavaScript={combinedScript}
               onNavigationStateChange={onNavigationStateChange}
               onMessage={handleWebViewMessage}
+              renderLoading={() => null}
             />
           </PullToRefresh>
         </View>

@@ -1,9 +1,12 @@
-import React from "react";
-import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import { useRef, useState } from "react";
+import { View, TouchableOpacity, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+
+import { bottomNavStyles } from "./styles/BottomNavStyles";
 
 const BottomNav = ({ activeRoute, onNavigate, currentUrl }) => {
+  const [isCooldown, setIsCooldown] = useState(false);
+  const cooldownRef = useRef(null);
 
   const navItems = [
     {
@@ -37,27 +40,32 @@ const BottomNav = ({ activeRoute, onNavigate, currentUrl }) => {
   ];
 
   const handlePress = (item) => {
+    if (isCooldown) return;
     if (activeRoute !== item.id) {
       console.log("Navigating to:", item.route);
       onNavigate?.(item.route, item.id);
     }
+
+    setIsCooldown(true);
+    clearTimeout(cooldownRef.current);
+    cooldownRef.current = setTimeout(() => {
+      setIsCooldown(false);
+    }, 500);
   };
 
-  const cantDisplay = currentUrl.includes("login")
+  const cantDisplay = currentUrl.includes("login");
 
-  if (cantDisplay) {
-    return
-  }
+  if (cantDisplay) return null;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.navBar}>
+    <View style={bottomNavStyles.container}>
+      <View style={bottomNavStyles.navBar}>
         {navItems.map((item) => {
           const isActive = activeRoute === item.id;
           return (
             <TouchableOpacity
               key={item.id}
-              style={styles.navItem}
+              style={bottomNavStyles.navItem}
               onPress={() => handlePress(item)}
               activeOpacity={0.7}
             >
@@ -68,7 +76,7 @@ const BottomNav = ({ activeRoute, onNavigate, currentUrl }) => {
               />
               <Text
                 style={[
-                  styles.navLabel,
+                  bottomNavStyles.navLabel,
                   { color: isActive ? "#01a0f2" : "#8E8E93" },
                 ]}
               >
@@ -82,43 +90,6 @@ const BottomNav = ({ activeRoute, onNavigate, currentUrl }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#FBFBFD",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0, 0, 0, 0.1)",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: -1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 8,
-  },
-  navBar: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingVertical: 7,
-    paddingHorizontal: 8,
-    paddingBottom: 12,
-  },
-  navItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  navLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    marginTop: 4,
-    letterSpacing: -0.24,
-  },
-});
 
 export default BottomNav;
 
-//--------------------------------------------------------------------
