@@ -1,23 +1,17 @@
-import React, { useRef, useState, useEffect } from "react";
-import {
-  View,
-  StatusBar,
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-} from "react-native";
-import { WebView } from "react-native-webview";
 import * as NavigationBar from "expo-navigation-bar";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Platform, StatusBar, View } from "react-native";
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
 import BottomNav from "./components/BottomNav";
 import GoBackHeaderNav from "./components/GoBackHeaderNav";
-import PullToRefresh from "./components/PullToRefresh";
 import OfflineOverlay from "./components/NetworkIndicator";
+import PullToRefresh from "./components/PullToRefresh";
 
-import * as customScripts from "./CustomScripts/InjectedScripts"
+import * as customScripts from "./CustomScripts/InjectedScripts";
 
 export default function Index() {
   const KIWI_URL = "https://demo.startkiwi.com/dashboard";
@@ -30,9 +24,12 @@ export default function Index() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [isAtTop, setIsAtTop] = useState(true);
   const insets = useSafeAreaInsets();
-
   const lastUrlRef = useRef(KIWI_URL);
   const isManualBackRef = useRef(false);
+
+  useEffect(() => {
+    console.log("HISTORY STACK:", historyStack);
+  }, [historyStack]);
 
   useEffect(() => {
     if (lastUrlRef.current === currentUrl) return;
@@ -44,6 +41,7 @@ export default function Index() {
     }
 
     setHistoryStack((prev) => {
+      if (prev[prev.length - 1] === currentUrl) return prev; 
       const newStack = [...prev, currentUrl];
       setCanGoBack(newStack.length > 1);
       return newStack;
@@ -102,8 +100,9 @@ export default function Index() {
     setHistoryStack(newStack);
     setCanGoBack(newStack.length > 1);
 
-  
-    webviewRef.current?.injectJavaScript(customScripts.preventRefreshOnBack(previousUrl));
+    webviewRef.current?.injectJavaScript(
+      customScripts.preventRefreshOnBack(previousUrl)
+    );
   };
 
   const handleWebViewMessage = (event) => {
@@ -117,6 +116,16 @@ export default function Index() {
     } catch (error) {
       console.log("WebView message error:", error);
     }
+  };
+
+  const customDialog = (title) => {
+    if (Platform.OS === "android") {
+      return (event) => {
+        event.preventDefault();
+        event.present(title);
+      };
+    }
+    return undefined;
   };
 
   const combinedScript = `
@@ -158,6 +167,9 @@ export default function Index() {
               onNavigationStateChange={onNavigationStateChange}
               onMessage={handleWebViewMessage}
               renderLoading={() => null}
+              onJsAlert={customDialog("Alert")}
+              onJsConfirm={customDialog("Confirm")}
+              onJsPrompt={customDialog("Prompt")}
             />
           </PullToRefresh>
         </View>
