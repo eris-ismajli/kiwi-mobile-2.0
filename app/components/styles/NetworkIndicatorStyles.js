@@ -40,4 +40,20 @@ export const networkIndicatorStyles = StyleSheet.create({
     fontWeight: "400",
     fontSize: 16,
   },
+  toast: {
+    position: "absolute",
+    bottom: 130,
+    left: 20,
+    right: 20,
+    backgroundColor: "#4CAF50",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 9999,
+  },
+  toastText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
 });

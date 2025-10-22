@@ -1,5 +1,5 @@
 import * as NavigationBar from "expo-navigation-bar";
-import { useEffect, useRef, useState } from "react";
+import { act, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Platform, StatusBar, View } from "react-native";
 import {
   SafeAreaProvider,
@@ -26,10 +26,7 @@ export default function Index() {
   const insets = useSafeAreaInsets();
   const lastUrlRef = useRef(KIWI_URL);
   const isManualBackRef = useRef(false);
-
-  useEffect(() => {
-    console.log("HISTORY STACK:", historyStack);
-  }, [historyStack]);
+  const [activeClasses, setActiveClasses] = useState([]);
 
   useEffect(() => {
     if (lastUrlRef.current === currentUrl) return;
@@ -41,7 +38,7 @@ export default function Index() {
     }
 
     setHistoryStack((prev) => {
-      if (prev[prev.length - 1] === currentUrl) return prev; 
+      if (prev[prev.length - 1] === currentUrl) return prev;
       const newStack = [...prev, currentUrl];
       setCanGoBack(newStack.length > 1);
       return newStack;
@@ -108,31 +105,49 @@ export default function Index() {
   const handleWebViewMessage = (event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === "urlChange") {
-        setCurrentUrl(data.url);
-      } else if (data.type === "scroll") {
-        setIsAtTop(data.scrollY === 0);
+
+      switch (data.type) {
+        // 🌐 Existing logic (keep this as is)
+        case "urlChange":
+          setCurrentUrl(data.url);
+          break;
+
+        case "scroll":
+          setIsAtTop(data.scrollY === 0);
+          break;
+
+        case "activeClasses":
+          setActiveClasses(data.value);
+          break;
+
+        default:
+          console.log("Unhandled message type:", data.type);
+          break;
       }
     } catch (error) {
       console.log("WebView message error:", error);
     }
   };
 
-  const customDialog = (title) => {
-    if (Platform.OS === "android") {
-      return (event) => {
-        event.preventDefault();
-        event.present(title);
-      };
-    }
-    return undefined;
-  };
+  // const customDialog = (title) => {
+  //   if (Platform.OS === "android") {
+  //     return (event) => {
+  //       event.preventDefault();
+  //       event.present(title);
+  //     };
+  //   }
+  //   return undefined;
+  // };
 
-  const combinedScript = `
+  const combinedScript = useMemo(
+    () => `
     ${customScripts.scrollDetector}
     ${customScripts.preventZoom}
-    true
-  `;
+    ${customScripts.classActivityDetector}
+    true;
+  `,
+    []
+  );
 
   return (
     <SafeAreaProvider>
@@ -148,12 +163,14 @@ export default function Index() {
           canGoBack={canGoBack}
           goBack={handleBackPress}
           currentUrl={currentUrl}
+          historyStack={historyStack}
         />
         <View style={{ flex: 1 }}>
           <PullToRefresh
             onRefresh={handleRefresh}
             isAtTop={isAtTop}
             currentUrl={currentUrl}
+            activeClasses={activeClasses}
           >
             <WebView
               ref={webviewRef}
@@ -167,9 +184,9 @@ export default function Index() {
               onNavigationStateChange={onNavigationStateChange}
               onMessage={handleWebViewMessage}
               renderLoading={() => null}
-              onJsAlert={customDialog("Alert")}
-              onJsConfirm={customDialog("Confirm")}
-              onJsPrompt={customDialog("Prompt")}
+              // onJsAlert={customDialog("Alert")}
+              // onJsConfirm={customDialog("Confirm")}
+              // onJsPrompt={customDialog("Prompt")}
             />
           </PullToRefresh>
         </View>

@@ -1,18 +1,45 @@
-import {
-  View,
-  TouchableOpacity,
-  Text,
-} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Text, TouchableOpacity, View } from "react-native";
 
 import { goBackHeaderStyles } from "./styles/GoBackNavStyles";
 
-function GoBackHeaderNav({ insets, canGoBack, goBack, currentUrl }) {
+import { useEffect } from "react";
+import { BackHandler } from "react-native";
+
+function GoBackHeaderNav({
+  insets,
+  canGoBack,
+  goBack,
+  currentUrl,
+  historyStack,
+}) {
+  useEffect(() => {
+    const onBackPress = () => {
+      if (canGoBack) {
+        goBack(); // Go back in the WebView
+        return true; // ✅ prevent the app from closing
+      }
+      return false; // allow default behavior (exit app)
+    };
+
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress
+    );
+
+    return () => subscription.remove();
+  }, [canGoBack, goBack]);
+
   const handleBackPress = () => {
     goBack();
   };
 
-  const cantGoBack = !canGoBack || currentUrl.includes("messages") || currentUrl.includes("login")
+  const previousUrl = historyStack.length - 2;
+
+  const cantGoBack =
+    !canGoBack ||
+    currentUrl.includes("login") ||
+    historyStack[previousUrl]?.includes("login");
 
   if (cantGoBack) {
     return (

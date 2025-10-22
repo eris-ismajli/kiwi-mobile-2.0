@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
-import { View, TouchableOpacity, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRef, useState } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
 
 import { bottomNavStyles } from "./styles/BottomNavStyles";
 
@@ -42,7 +42,6 @@ const BottomNav = ({ activeRoute, onNavigate, currentUrl }) => {
   const handlePress = (item) => {
     if (isCooldown) return;
     if (activeRoute !== item.id) {
-      console.log("Navigating to:", item.route);
       onNavigate?.(item.route, item.id);
     }
 
@@ -90,6 +89,4 @@ const BottomNav = ({ activeRoute, onNavigate, currentUrl }) => {
   );
 };
 
-
 export default BottomNav;
-
